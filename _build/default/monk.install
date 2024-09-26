@@ -1,0 +1,8 @@
+lib: [
+  "_build/install/default/lib/monk/META"
+  "_build/install/default/lib/monk/dune-package"
+  "_build/install/default/lib/monk/opam"
+]
+bin: [
+  "_build/install/default/bin/monk"
+]

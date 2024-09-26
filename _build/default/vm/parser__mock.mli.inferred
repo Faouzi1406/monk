@@ -1,0 +1,32 @@
+type token =
+    SUB
+  | SHOW
+  | PUSH
+  | POP
+  | OR
+  | NOTEQ
+  | MUL
+  | MOREEQ
+  | MORE
+  | LESSEQ
+  | LESS
+  | KOMMA
+  | JMPZ
+  | JMPNZ
+  | INT of int
+  | IDENT of string
+  | FUNC
+  | FLOAT of float
+  | EQ
+  | EOF
+  | AND
+  | ADD
+val menhir_begin_marker : int
+val xv_value : Value.value
+val xv_separated_nonempty_list_KOMMA_IDENT_ : string list
+val xv_separated_list_KOMMA_IDENT_ : string list
+val xv_main : Instr.t list
+val xv_loption_separated_nonempty_list_KOMMA_IDENT__ : string list
+val xv_list_instr_ : Instr.t list
+val xv_instr : Instr.t
+val menhir_end_marker : int
