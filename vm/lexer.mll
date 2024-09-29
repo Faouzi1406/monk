@@ -40,7 +40,6 @@ rule read =
   | "jmpz" { JMPZ }
   | "jmpnz" { JMPNZ }
   | "func"  { FUNC }
-  | "func"  { FUNC }
   | "add"   { ADD }
   | "sub"   { SUB }
   | "mul"   { MUL }

@@ -5,8 +5,8 @@ exception END
 
 module CallStack = struct
   type t =
-    { ret_to : int
-    ; locals : (string, value) Hashtbl.t
+    { ret : int
+    ; ls : (string, value) Hashtbl.t
     ; prev : t option
     }
 end
@@ -17,7 +17,7 @@ type t =
   ; ds : value Stack.t
   ; il : Instr.t list
   ; funcs : (string, int) Hashtbl.t
-  ; globals : (string, value) Hashtbl.t
+  ; globals : (int, value) Hashtbl.t
   }
 
 let new_vm ~instructions:il =
@@ -44,6 +44,7 @@ let rec next t =
     | Instr.Jmpnz a -> jmpnz t ~arg:a
     | Instr.Alu op -> alu t ~op
     | Instr.Func { name; _ } -> register_func t ~name
+    | Instr.Call name -> call name
   with
   | Failure _ -> raise END
 
@@ -205,6 +206,8 @@ and neq ~lhs:l ~rhs:r =
   | _ -> assert false
 
 and register_func t ~name:n = Hashtbl.add t.funcs n t.pc
+and call t ~name:n = 
+  let pc = Hashtbl.find n
 
 let lex src =
   let rec lex' list =

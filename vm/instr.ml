@@ -3,9 +3,9 @@ open Value
 type t =
   (*Show the top of the stack*)
   | Show
-  | Pop
   (*Push value onto stack*)
   | Push of value
+  | Pop
   (*Jump if zero*)
   | Jmpz of value
   (*Jump if not zero*)
@@ -15,6 +15,7 @@ type t =
       { name : string
       ; args : string list
       }
+  | Call of string
 
 and alu =
   | Add
