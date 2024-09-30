@@ -3,50 +3,54 @@ open Instr
 
 exception END
 
-module CallStack = struct
-  type t =
-    { ret : int
-    ; ls : (string, value) Hashtbl.t
-    ; prev : t option
-    }
-end
-
 type t =
   { mutable pc : int
-  ; cs : CallStack.t option
   ; ds : value Stack.t
   ; il : Instr.t list
-  ; funcs : (string, int) Hashtbl.t
+  ; labels : (string, int) Hashtbl.t
   ; globals : (int, value) Hashtbl.t
   }
 
+let register_label t ~label:n ~pos:p = Hashtbl.add t.labels n p
+
 let new_vm ~instructions:il =
-  { cs = None
-  ; ds = Stack.create ()
-  ; il
-  ; pc = 0
-  ; globals = Hashtbl.create 200
-  ; funcs = Hashtbl.create 100
-  }
+  let vm =
+    { ds = Stack.create ()
+    ; il
+    ; pc = 0
+    ; globals = Hashtbl.create 200
+    ; labels = Hashtbl.create 100
+    }
+  in
+  List.iteri
+    (fun i v ->
+      match v with
+      | Label name -> register_label vm ~label:name ~pos:i
+      | _ -> ())
+    il;
+  vm
 ;;
 
 let rec next t =
   try
     let instr = List.nth t.il t.pc in
     t.pc <- t.pc + 1;
-    match instr with
-    | Instr.Show -> show t
-    | Instr.Pop ->
-      let _ = Stack.pop t.ds in
-      ()
-    | Instr.Push i -> Stack.push i t.ds
-    | Instr.Jmpz a -> jmpz t ~arg:a
-    | Instr.Jmpnz a -> jmpnz t ~arg:a
-    | Instr.Alu op -> alu t ~op
-    | Instr.Func { name; _ } -> register_func t ~name
-    | Instr.Call name -> call name
+    exec t instr
   with
   | Failure _ -> raise END
+
+and exec t instr =
+  match instr with
+  | Instr.Show -> show t
+  | Instr.Pop ->
+    let _ = Stack.pop t.ds in
+    ()
+  | Instr.Push i -> Stack.push i t.ds
+  | Instr.GotoZ a -> jmpz t ~arg:a
+  | Instr.GotoNZ a -> jmpnz t ~arg:a
+  | Instr.Alu op -> alu t ~op
+  | Instr.Goto label -> goto t ~label
+  | _ -> ()
 
 and show t =
   match Stack.top t.ds with
@@ -57,14 +61,14 @@ and show t =
 
 and jmpz t ~arg:a =
   let top = Stack.pop t.ds in
-  match top, a with
-  | Value.Int int, Value.Int p -> if int == 0 then t.pc <- p
+  match top with
+  | Value.Int int -> if int == 0 then t.pc <- Hashtbl.find t.labels a
   | _ -> assert false
 
 and jmpnz t ~arg:a =
   let top = Stack.pop t.ds in
-  match top, a with
-  | Value.Int int, Value.Int p -> if int != 0 then t.pc <- p
+  match top with
+  | Value.Int int -> if int != 0 then t.pc <- Hashtbl.find t.labels a
   | _ -> assert false
 
 and alu t ~op:a =
@@ -205,9 +209,12 @@ and neq ~lhs:l ~rhs:r =
   | Value.Float lhs, Value.Float rhs -> Value.Int (Bool.to_int (lhs != rhs))
   | _ -> assert false
 
-and register_func t ~name:n = Hashtbl.add t.funcs n t.pc
-and call t ~name:n = 
-  let pc = Hashtbl.find n
+and goto t ~label:n =
+  let pos = Hashtbl.find t.labels n in
+  match List.nth t.il pos with
+  | Label _ -> t.pc <- pos
+  | _ -> assert false
+;;
 
 let lex src =
   let rec lex' list =
@@ -224,26 +231,30 @@ let parse src =
   Parser.main lex lexer
 ;;
 
-let%expect_test "Count to 80" =
+let%expect_test "Count to 900" =
   let instr =
     parse
       {|
-    push 1
-    push 1
-    add
+    goto looped_count
 
-    push 80
-    moreeq
-    jmpz 8
+    label looped_count:
+      push 100
+      show
 
-    eq
-    jmpnz 11
+      label adds:
+      push 100
+      add
 
-    pop
-    push 0
-    jmpz 1
+      push 900
+      eq
+      gotonz exit
 
-    show
+      pop
+      show
+      goto adds
+
+    label exit:
+      show
     |}
   in
   let vm = new_vm ~instructions:instr in
@@ -252,5 +263,5 @@ let%expect_test "Count to 80" =
       next vm
     done
   with
-  | END -> [%expect {| 80 |}]
+  | END -> [%expect {| 100200300400500600700800900 |}]
 ;;

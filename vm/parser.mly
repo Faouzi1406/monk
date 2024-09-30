@@ -19,7 +19,12 @@
 %token EQ
 %token NOTEQ
 %token EOF
-%token KOMMA
+%token LABEL
+%token GOTO
+%token COLON
+%token LEFTBRACKET
+%token RIGHTBRACKET
+
 
 %start <Instr.t list> main
 
@@ -38,8 +43,8 @@ instr:
   | SHOW; { Show }
   | POP; { Pop }
   | PUSH; e = value;  { Push e }
-  | JMPZ; e = value;  { Jmpz e }
-  | JMPNZ; e = value;  { Jmpnz e }
+  | JMPZ; e = IDENT;  { GotoZ e }
+  | JMPNZ; e = IDENT;  { GotoNZ e }
   | ADD;  { Alu Add }
   | SUB; { Alu Sub }
   | MUL; { Alu Mul  }
@@ -51,7 +56,9 @@ instr:
   | LESSEQ; { Alu LessEq }
   | EQ; { Alu Eq }
   | NOTEQ; { Alu NotEq }
-  | FUNC; name = IDENT; args = separated_list(KOMMA, IDENT)  {Func {  name ; args }}
+    | LABEL; name = IDENT;  COLON;
+    { Label name }
+  | GOTO; name = IDENT; {Goto name}
 
 value: 
   | i = INT; { Value.Int i }

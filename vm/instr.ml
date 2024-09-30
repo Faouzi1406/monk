@@ -7,15 +7,12 @@ type t =
   | Push of value
   | Pop
   (*Jump if zero*)
-  | Jmpz of value
+  | GotoZ of string
   (*Jump if not zero*)
-  | Jmpnz of value
+  | GotoNZ of string
   | Alu of alu
-  | Func of
-      { name : string
-      ; args : string list
-      }
-  | Call of string
+  | Goto of string
+  | Label of string
 
 and alu =
   | Add

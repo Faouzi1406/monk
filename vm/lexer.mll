@@ -33,12 +33,11 @@ rule read =
   | newline  { next_line lexbuf; read lexbuf }
   | int      { INT (int_of_string (Lexing.lexeme lexbuf)) }
   | float    { FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
-  | "," { KOMMA }
   | "show"  { SHOW }
   | "pop"   { POP }
   | "push"  { PUSH }
-  | "jmpz" { JMPZ }
-  | "jmpnz" { JMPNZ }
+  | "gotoz" { JMPZ }
+  | "gotonz" { JMPNZ }
   | "func"  { FUNC }
   | "add"   { ADD }
   | "sub"   { SUB }
@@ -51,6 +50,11 @@ rule read =
   | "lesseq"  { LESSEQ }
   | "eq"    { EQ }
   | "neq"   { NOTEQ }
+  | "label" { LABEL }
+  | "goto" { GOTO }
+  | ":" { COLON }
+  | "[" { LEFTBRACKET }
+  | "]" { RIGHTBRACKET }
   | id       { IDENT (Lexing.lexeme lexbuf) }
   | eof      { EOF }
   | _ { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }
