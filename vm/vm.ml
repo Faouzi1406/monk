@@ -1,6 +1,13 @@
 open Value
 open Instr
 
+(*
+   TODO:
+   - Add better errors for type errors etc
+   - Optimize certaint area's/speed up access to values
+   - The design of this is not perfect just yet, we need to think about this better.
+*)
+
 exception END
 
 type t =
