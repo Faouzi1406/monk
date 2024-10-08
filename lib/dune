@@ -1,2 +1,12 @@
 (library
  (name monk))
+
+(menhir
+ (modules parser))
+
+(ocamllex lexer)
+
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A))))

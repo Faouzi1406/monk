@@ -11,3 +11,6 @@ let add =
     | Float a -> Float b -> a + b
     | String a and (numeric a) -> String b and (numeric b) ->  make_int a +  b
 ```
+
+
+Typesystem ?:
