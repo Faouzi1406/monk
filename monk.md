@@ -1,11 +1,12 @@
-```
-type v {
-}
+```rust
+let add(a, b) = a + b
+let other = add(10, 20)
 
-implement v {
-}
-
-v = match
-    | (a : Int, b : Int) => a + b 
-    | (x : Float, y : Float) => x +. y
+ ^ |-   + : int -> int -> int
+ ----------------------------
+ ^ |- a : int,^ |- b : int
+ ----------------------------
+ ^ |- add : int -> int -> int
+ ----------------------------
+ ^ |- other :  int
 ```
