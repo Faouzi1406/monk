@@ -3,10 +3,22 @@ open Stack
 
 type t = { gsymb : Stable.t }
 
-let ident_ty env ident =
-  match Stable.find ident env.gsymb with
+let ident_ty scope ident =
+  match Stable.find ident scope with
   | Some v -> Tsymbol.get_ty v
   | None -> Tsymbol.Generic ident
+;;
+
+(*Assumed: that the params have already been loaded into local scope...*)
+let callable_ty ~scope:s ~name:n ~params:p ~ret_ty:r =
+  let scheme = List.map (fun (name, _) -> ident_ty s name) p in
+  let ret_ty =
+    match r with
+    | Some t -> ident_ty s t
+    | None -> Tsymbol.Generic n
+  in
+  let scheme = scheme @ [ ret_ty ] in
+  Tsymbol.Scheme scheme
 ;;
 
 let rec infer_expr env = function
@@ -32,21 +44,38 @@ and call_ty env = function
   | upon, _ -> ident_ty env upon
 ;;
 
-let infer_var env = function
+let infer_var scope = function
   | name, Some typed, _ ->
     Stable.add
       name
       (Tsymbol.TyVar { n = name; t = Tsymbol.type_from_str typed })
-      env.gsymb
+      scope
   | name, None, expr ->
     Stable.add
       name
-      (Tsymbol.TyVar { n = name; t = infer_expr env expr })
-      env.gsymb
+      (Tsymbol.TyVar { n = name; t = infer_expr scope expr })
+      scope
 ;;
 
-let infer_func env = function
-  | _ -> assert false (*TODO: Local scope -> infer -> blablabla*)
+let rec infer_func scope = function
+  | name, ret_ty, params, body ->
+    let scope = Stable.init @@ Stable.KLocal scope in
+    load_params scope params;
+    Stable.add
+      name
+      (Tsymbol.TyVar { n = name; t = callable_ty ~scope ~name ~params ~ret_ty })
+      scope;
+    assert false (*TODO: Local scope -> infer -> blablabla*)
+
+and load_params scope params =
+  List.iter
+    (fun (name, typed) ->
+      match typed with
+      | Some t ->
+        Stable.add name (Tsymbol.TyVar { n = name; t = ident_ty scope t }) scope
+      | None ->
+        Stable.add name (Tsymbol.TyVar { n = name; t = Generic name }) scope)
+    params
 ;;
 
 let infer_stmt e = function
@@ -58,6 +87,6 @@ let infer_stmt e = function
 let infer_symbols env ast =
   match ast with
   | Program (stmts, _) ->
-    List.iter (fun s -> infer_stmt env s) stmts;
+    List.iter (fun s -> infer_stmt env.gsymb s) stmts;
     env.gsymb
 ;;
