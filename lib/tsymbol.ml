@@ -1,12 +1,14 @@
 type t =
+  | TyAnon of types
   | TyVar of
       { n : string
-      ; t : types
+      ; mutable t : types
       }
   | TyCallable of
       { n : string
-      ; t : types
+      ; mutable t : types
       }
+[@@deriving show]
 
 and types =
   | String
@@ -18,8 +20,10 @@ and types =
   | Void
   | Generic of string
   | Scheme of types list
+[@@deriving show]
 
 let get_ty = function
+  | TyAnon t -> t
   | TyVar t -> t.t
   | TyCallable t -> t.t
 ;;

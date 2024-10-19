@@ -38,3 +38,10 @@ let add name value = function
   | TGlobal g -> Hashtbl.add g.data name value
   | TLocal l -> Hashtbl.add l.data name value
 ;;
+
+let print_table = function
+  | TGlobal g ->
+    Hashtbl.iter (fun _ symbol -> print_endline @@ Tsymbol.show symbol) g.data
+  | TLocal l ->
+    Hashtbl.iter (fun _ symbol -> print_endline @@ Tsymbol.show symbol) l.data
+;;
