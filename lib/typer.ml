@@ -11,8 +11,8 @@ let rec last_ty = function
   | _ :: rest -> last_ty rest
 ;;
 
-let ident_ty scope ident =
-  match Stable.find ident scope with
+let ident_ty scope ident sk =
+  match Stable.find ident sk scope with
   | Some v -> Tsymbol.get_ty v
   | None -> Tsymbol.Generic ident
 ;;
@@ -34,14 +34,16 @@ and lit_ty env = function
   | LFloat _ -> Float
   | LChar _ -> Char
   | LString _ -> String
-  | LIdent id -> ident_ty env id
+  | LIdent id -> ident_ty env id None
   | LArray _ -> assert false (*TODO: Arrays*)
   | LObject _ -> assert false (*TODO: Objects*)
 
 (**TODO: This should never happend roight?*)
-and call_ty env = function
-  | upon, _ ->
-    (match ident_ty env upon with
+and call_ty scope = function
+  | upon, args ->
+    let apply = List.map (fun expr -> infer_expr ~scope ~expr) args in
+    scope |> Stable.add @@ Tsymbol.TyApply { n = upon; t = Scheme apply };
+    (match ident_ty scope upon @@ Some `TyCallable with
      | Tsymbol.Scheme s -> List.nth s @@ (List.length s - 1)
      | _ -> assert false)
 ;;
@@ -56,7 +58,7 @@ let rec infer_stmt ~scope:s ~stmt:st =
 and infer_var s = function
   | name, _, expr ->
     let ty = infer_expr ~scope:s ~expr in
-    s |> Stable.add name @@ TyVar { n = name; t = ty };
+    s |> Stable.add @@ TyVar { n = name; t = ty };
     ty
 
 and infer_func s = function
@@ -66,15 +68,14 @@ and infer_func s = function
     let params =
       List.map
         (fun (name, t) ->
-          (match t with
-           | Some t -> t
-           | None -> name)
-          |> ident_ty fn_scope)
+          match t with
+          | Some t -> ident_ty fn_scope t None
+          | None -> Generic name)
         params
     in
-    Stable.append s fn_scope;
+    Stable.append fn_scope s;
     let ft = Tsymbol.Scheme (params @ [ ty ]) in
-    s |> Stable.add name @@ Tsymbol.TyCallable { n = name; t = ft };
+    s |> Stable.add @@ Tsymbol.TyCallable { n = name; t = ft };
     ft
 
 (**TODO: Implement Type inference for return ...*)

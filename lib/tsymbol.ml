@@ -1,5 +1,8 @@
 type t =
-  | TyAnon of types
+  | TyApply of
+      { n : string
+      ; mutable t : types
+      }
   | TyVar of
       { n : string
       ; mutable t : types
@@ -22,14 +25,27 @@ and types =
   | Scheme of types list
 [@@deriving show]
 
+and sym_kind =
+  [ `TyApply
+  | `TyVar
+  | `TyCallable
+  ]
+
+let name_eq symb name sk =
+  match symb, sk with
+  | TyApply a, (None | Some `TyApply) -> a.n = name
+  | TyVar a, (None | Some `TyVar) -> a.n = name
+  | TyCallable a, (None | Some `TyCallable) -> a.n = name
+  | _ -> false
+;;
+
 let get_ty = function
-  | TyAnon t -> t
+  | TyApply t -> t.t
   | TyVar t -> t.t
   | TyCallable t -> t.t
 ;;
 
-let type_from_str s =
-  match s with
+let type_from_str = function
   | "string" -> String
   | "float" -> Float
   | "int" -> Int

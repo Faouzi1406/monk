@@ -14,6 +14,15 @@ Also the inference would be kinda strange for this, how do we actually handle th
 ```rust
 let add(a, b) = {
 // a and b are unused... Therefore we can not use them
+    a + b
 }
+
+add(10, 20) -> a and b become type int
+
+ a = b
+
+|- add: 'a -> 'b -> 'c
+_______________________
+|- add: int -> int -> int
 ```
 

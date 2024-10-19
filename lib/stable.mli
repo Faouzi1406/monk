@@ -7,7 +7,7 @@ type kind =
   | KGlobal
 
 val init : kind -> t
-val find : string -> t -> Tsymbol.t option
+val find : string -> Tsymbol.sym_kind option -> t -> Tsymbol.t option
 val append : t -> t -> unit
-val add : string -> Tsymbol.t -> t -> unit
+val add : Tsymbol.t -> t -> unit
 val print_table : t -> unit

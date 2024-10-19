@@ -9,11 +9,12 @@ let%expect_test "Test simple variables" =
     parse
       {|
       let add(a, b) = {
-      a + b 
+        let c = a
+        a +20
       }
     let v = 10
     let b = 20
-    let c = v + b
+    let c = v + "hello there!"
     let d = add(20, 10)
   |}
   in
@@ -21,13 +22,14 @@ let%expect_test "Test simple variables" =
   Stable.print_table a;
   [%expect
     {|
+    Tsymbol.TyVar {n = "d"; t = Tsymbol.Int}
+    Tsymbol.TyApply {n = "add"; t = (Tsymbol.Scheme [Tsymbol.Int; Tsymbol.Int])}
+    Tsymbol.TyVar {n = "c"; t = Tsymbol.String}
     Tsymbol.TyVar {n = "b"; t = Tsymbol.Int}
-    Tsymbol.TyVar {n = "d"; t = (Tsymbol.Generic "b")}
+    Tsymbol.TyVar {n = "v"; t = Tsymbol.Int}
     Tsymbol.TyCallable {n = "add";
       t =
-      (Tsymbol.Scheme
-         [(Tsymbol.Generic "a"); (Tsymbol.Generic "b"); (Tsymbol.Generic "b")])}
-    Tsymbol.TyVar {n = "v"; t = Tsymbol.Int}
-    Tsymbol.TyVar {n = "c"; t = Tsymbol.Int}
+      (Tsymbol.Scheme [(Tsymbol.Generic "a"); (Tsymbol.Generic "b"); Tsymbol.Int])}
+    Tsymbol.TyVar {n = "c"; t = (Tsymbol.Generic "a")}
     |}]
 ;;
