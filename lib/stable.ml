@@ -53,9 +53,15 @@ let add value = function
 
 let rec print_table = function
   | TGlobal g ->
-    Stack.iter (fun symbol -> print_endline @@ Tsymbol.show symbol) g.data;
+    print_endline "Global:";
+    Stack.iter
+      (fun symbol -> print_endline @@ "   " ^ Tsymbol.show symbol)
+      g.data;
     Stack.iter (fun t -> print_table t) g.scopes
   | TLocal l ->
-    Stack.iter (fun symbol -> print_endline @@ Tsymbol.show symbol) l.data;
+    print_endline "Local:";
+    Stack.iter
+      (fun symbol -> print_endline @@ "   " ^ Tsymbol.show symbol)
+      l.data;
     Stack.iter (fun t -> print_table t) l.scopes
 ;;

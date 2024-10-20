@@ -1,3 +1,5 @@
+(**TODO: Really apply and callable should only be using t so that typevar is used as what it is a type variable*)
+
 type t =
   | TyApply of
       { n : string
@@ -33,7 +35,7 @@ and sym_kind =
 
 let name_eq symb name sk =
   match symb, sk with
-  | TyApply a, (None | Some `TyApply) -> a.n = name
+  | TyApply a, (None | Some `TyCallable) -> a.n = name
   | TyVar a, (None | Some `TyVar) -> a.n = name
   | TyCallable a, (None | Some `TyCallable) -> a.n = name
   | _ -> false

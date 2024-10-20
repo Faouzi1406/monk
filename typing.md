@@ -9,20 +9,15 @@ I feel like we don't, since all typing is implicit. If our typesystem is implici
 Also the inference would be kinda strange for this, how do we actually handle the return, do we somehow track and load it as a TyAnon into scope. Perhaps TyVar return?
 
 
-# Params
+- What I have been thinking:
 
 ```rust
 let add(a, b) = {
-// a and b are unused... Therefore we can not use them
-    a + b
+    return a + b
 }
 
-add(10, 20) -> a and b become type int
-
- a = b
-
-|- add: 'a -> 'b -> 'c
-_______________________
-|- add: int -> int -> int
+e |- add: a' -> b' -> b'
+------------------------
+e |- add: a' -> b'
+------------------------
 ```
-

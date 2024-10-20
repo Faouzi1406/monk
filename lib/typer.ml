@@ -44,7 +44,9 @@ and call_ty scope = function
     let apply = List.map (fun expr -> infer_expr ~scope ~expr) args in
     scope |> Stable.add @@ Tsymbol.TyApply { n = upon; t = Scheme apply };
     (match ident_ty scope upon @@ Some `TyCallable with
-     | Tsymbol.Scheme s -> List.nth s @@ (List.length s - 1)
+     | Tsymbol.Scheme s ->
+       let ret_ty = List.nth s @@ (List.length s - 1) in
+       ret_ty
      | _ -> assert false)
 ;;
 
@@ -83,6 +85,17 @@ and infer_block s block =
   last_ty @@ List.map (fun stmt -> infer_stmt ~scope:s ~stmt) block
 ;;
 
+let rec substitution table =
+  List.iter (fun v -> sub) table.data;
+  ()
+
+and substitute table symbol =
+  match symbol with
+  | Tsymbol.TyApply a -> assert false
+  | TyCallable b -> assert false
+  | TyVar v -> assert false
+;;
+
 let infer_symbols env ast =
   match ast with
   | Program (stmts, _) ->
@@ -91,5 +104,6 @@ let infer_symbols env ast =
         let _ = infer_stmt ~scope:env.gsymb ~stmt in
         ())
       stmts;
+    substitution env.gsymb;
     env.gsymb
 ;;
