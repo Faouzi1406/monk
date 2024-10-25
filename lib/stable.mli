@@ -1,6 +1,17 @@
 (*Monk Symbol Table*)
 
-type t
+type data = Tsymbol.t Stack.t
+
+type t =
+  | TGlobal of
+      { data : data
+      ; scopes : t Stack.t
+      }
+  | TLocal of
+      { prev : t
+      ; data : data
+      ; scopes : t Stack.t
+      }
 
 type kind =
   | KLocal of t

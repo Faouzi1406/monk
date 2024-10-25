@@ -35,9 +35,9 @@ and sym_kind =
 
 let name_eq symb name sk =
   match symb, sk with
-  | TyApply a, (None | Some `TyCallable) -> a.n = name
-  | TyVar a, (None | Some `TyVar) -> a.n = name
   | TyCallable a, (None | Some `TyCallable) -> a.n = name
+  | TyVar a, (None | Some `TyVar) -> a.n = name
+  | TyApply a, (None | Some `TyApply) -> a.n = name
   | _ -> false
 ;;
 
@@ -54,4 +54,10 @@ let type_from_str = function
   | "bool" -> Boolean
   | "void" -> Void
   | n -> Ident n
+;;
+
+let change_type ty = function
+  | TyApply t -> t.t <- ty
+  | TyVar t -> t.t <- ty
+  | TyCallable t -> t.t <- ty
 ;;

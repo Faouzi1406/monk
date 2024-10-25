@@ -64,7 +64,7 @@ and infer_var s = function
     ty
 
 and infer_func s = function
-  | name, typed, params, stmt ->
+  | name, _, params, stmt ->
     let fn_scope = Stable.init @@ KLocal s in
     let ty = infer_stmt ~scope:fn_scope ~stmt in
     let params =
@@ -85,15 +85,44 @@ and infer_block s block =
   last_ty @@ List.map (fun stmt -> infer_stmt ~scope:s ~stmt) block
 ;;
 
-let rec substitution table =
-  List.iter (fun v -> sub) table.data;
-  ()
+let rec substitution scope =
+  match scope with
+  | Stable.TGlobal g ->
+    Stack.iter (fun v -> substitute scope v) g.data;
+    ()
+  | TLocal g ->
+    Stack.iter (fun v -> substitute scope v) g.data;
+    ()
 
-and substitute table symbol =
+and replace scope ty with_ty =
+  match scope with
+  | Stable.TGlobal g ->
+    Stack.iter
+      (fun s -> if Tsymbol.get_ty s = ty then Tsymbol.change_type with_ty s)
+      g.data
+  | TLocal g ->
+    Stack.iter
+      (fun s -> if Tsymbol.get_ty s = ty then Tsymbol.change_type with_ty s)
+      g.data;
+    assert false
+
+and substitute scope symbol =
   match symbol with
-  | Tsymbol.TyApply a -> assert false
-  | TyCallable b -> assert false
-  | TyVar v -> assert false
+  | Tsymbol.TyApply { n; t = Scheme apply } ->
+    let callable = scope |> Stable.find n @@ Some `TyCallable in
+    (match callable with
+     | Some (TyCallable { n = _; t = Scheme s }) ->
+       List.iteri
+         (fun i t ->
+           if List.length apply > i
+           then (
+             let replace_with = List.nth apply i in
+             replace scope t replace_with))
+         s
+     | _ -> ())
+  | TyCallable _ -> ()
+  | TyVar _ -> ()
+  | _ -> assert false
 ;;
 
 let infer_symbols env ast =
