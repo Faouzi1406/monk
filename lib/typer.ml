@@ -87,12 +87,8 @@ and infer_block s block =
 
 let rec substitution scope =
   match scope with
-  | Stable.TGlobal g ->
-    Stack.iter (fun v -> substitute scope v) g.data;
-    ()
-  | TLocal g ->
-    Stack.iter (fun v -> substitute scope v) g.data;
-    ()
+  | Stable.TGlobal g -> Stack.iter (fun v -> substitute scope v) g.data
+  | TLocal g -> Stack.iter (fun v -> substitute scope v) g.data
 
 and replace scope ty with_ty =
   match scope with
@@ -119,7 +115,7 @@ and substitute scope symbol =
              let replace_with = List.nth apply i in
              replace scope t replace_with))
          s
-     | _ -> ())
+     | _ -> assert false)
   | TyCallable _ -> ()
   | TyVar _ -> ()
   | _ -> assert false

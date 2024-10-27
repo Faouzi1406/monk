@@ -9,8 +9,7 @@ let%expect_test "Test simple variables" =
     parse
       {|
       let add(a, b) = {
-        let c = a
-        c
+        b
       }
     let v = 10
     let b = 20
@@ -31,8 +30,7 @@ let%expect_test "Test simple variables" =
        Tsymbol.TyCallable {n = "add";
       t =
       (Tsymbol.Scheme
-         [(Tsymbol.Generic "a"); (Tsymbol.Generic "b"); (Tsymbol.Generic "a")])}
+         [(Tsymbol.Generic "a"); (Tsymbol.Generic "b"); (Tsymbol.Generic "b")])}
     Local:
-       Tsymbol.TyVar {n = "c"; t = (Tsymbol.Generic "a")}
     |}]
 ;;

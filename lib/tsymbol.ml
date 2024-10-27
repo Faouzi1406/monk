@@ -47,6 +47,13 @@ let get_ty = function
   | TyCallable t -> t.t
 ;;
 
+let replace_ty_if_eq to_replace ty if_eq =
+  match to_replace with
+  | TyApply t -> assert false
+  | TyCallable t -> assert false
+  | TyVar t -> assert false
+;;
+
 let type_from_str = function
   | "string" -> String
   | "float" -> Float
