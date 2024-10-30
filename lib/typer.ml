@@ -1,138 +1,90 @@
-open Ast
-open Stack
+open Ttree
 
-type t = { gsymb : Stable.t }
+let todo () = raise (Invalid_argument "Not yet implemented")
 
-let init () = { gsymb = Stable.init KGlobal }
+let rec infer_expr ~env:e ~expr:ex =
+  match ex with
+  | Ast.ECall ex -> application ~env:e ex
+  | EBinaryOp b -> bop ~env:e b
+  | ELiteral l -> lit ~env:e l
+  | _ -> todo ()
 
-let rec last_ty = function
-  | [ x ] -> x
-  | [] -> Tsymbol.Void
-  | _ :: rest -> last_ty rest
+and lit ~env:e = function
+  | Ast.LInt _ -> Option.get @@ type_var ~env:e ~name:"int"
+  | LFloat _ -> Option.get @@ type_var ~env:e ~name:"float"
+  | LString _ -> Option.get @@ type_var ~env:e ~name:"string"
+  | LIdent id -> Option.get @@ type_var ~env:e ~name:id
+  | _ -> todo ()
+
+and bop ~env:e = function
+  | _, Ast.ODot, _ -> todo ()
+  | lhs, _, rhs ->
+    let lhs = infer_expr ~env:e ~expr:lhs in
+    let rhs = infer_expr ~env:e ~expr:rhs in
+    replace_poly ~env:e ~new_ty:lhs ~ty:rhs;
+    replace_poly ~env:e ~new_ty:rhs ~ty:lhs;
+    if ty_of ~env:e lhs != ty_of ~env:e rhs
+    then
+      Tyerr.unequal_ty ~lhs:(rule_name ~env:e lhs) ~rhs:(rule_name ~env:e rhs)
+    else lhs
+
+and application ~env:e = function
+  | n, args ->
+    Application { n; t = List.map (fun expr -> infer_expr ~env:e ~expr) args }
 ;;
 
-let ident_ty scope ident sk =
-  match Stable.find ident sk scope with
-  | Some v -> Tsymbol.get_ty v
-  | None -> Tsymbol.Generic ident
+let rec infer_stmt ~env:e = function
+  | Ast.SVar v -> infer_let ~env:e v
+  | SFunc f -> infer_func ~env:e f
+  | SExpr expr -> infer_expr ~env:e ~expr
+  | _ -> todo ()
+
+and infer_let ~env:e = function
+  | n, Some ty_name, expr ->
+    let ty = Ttree.type_var ~env:e ~name:ty_name in
+    (match ty with
+     | Some t ->
+       let expr_ty = infer_expr ~env:e ~expr in
+       if ty_of ~env:e expr_ty != ty_of ~env:e t
+       then
+         Tyerr.unequal_ty
+           ~lhs:(rule_name ~env:e t)
+           ~rhs:(rule_name ~env:e expr_ty)
+       else Let { n; t }
+     | None -> Tyerr.invalid_ty ~name:ty_name)
+  | n, None, expr -> Let { n; t = infer_expr ~env:e ~expr }
+
+(*TODO: We have to load in the global enviremont, otherwise inference will get pretty dang hard...*)
+and infer_func ~env:_ = function
+  | n, _, params, stmt ->
+    let b = new_tree () in
+    let b = add_params ~env:b ~params in
+    let t = infer_stmt ~env:b stmt in
+    Abstraction { n; t; b = Some b }
+
+and add_params ~env:e ~params:p =
+  let rec add_params' ~env:e = function
+    | (name, None) :: params ->
+      let poly = Variable { n = name; t = Polymorphic } in
+      add_params' ~env:(append_rule ~env:e ~rule:poly) params
+    | (name, Some ty_name) :: params ->
+      let ty = Ttree.type_var ~env:e ~name:ty_name in
+      if ty = None then Tyerr.invalid_ty ~name:ty_name;
+      let ty = Variable { n = name; t = ty_of ~env:e @@ Option.get ty } in
+      add_params' ~env:(append_rule ~env:e ~rule:ty) params
+    | [] -> e
+  in
+  add_params' ~env:e p
 ;;
 
-let rec infer_expr ~scope:s ~expr:e =
-  match e with
-  | ECondition _ -> Tsymbol.Boolean
-  | ECall c -> call_ty s c
-  | ELiteral l -> lit_ty s l
-  | EBinaryOp b -> bop_ty s b
-
-and bop_ty scope = function
-  (*TODO: We should probably think much much better about how we infer the type here.
-    Also: lhs '.'  rhs, does not mean that type(lhs) === type(rhs) *)
-  | _, _, expr -> infer_expr ~scope ~expr
-
-and lit_ty env = function
-  | LInt _ -> Tsymbol.Int
-  | LFloat _ -> Float
-  | LChar _ -> Char
-  | LString _ -> String
-  | LIdent id -> ident_ty env id None
-  | LArray _ -> assert false (*TODO: Arrays*)
-  | LObject _ -> assert false (*TODO: Objects*)
-
-(**TODO: This should never happend roight?*)
-and call_ty scope = function
-  | upon, args ->
-    let apply = List.map (fun expr -> infer_expr ~scope ~expr) args in
-    scope |> Stable.add @@ Tsymbol.TyApply { n = upon; t = Scheme apply };
-    (match ident_ty scope upon @@ Some `TyCallable with
-     | Tsymbol.Scheme s ->
-       let ret_ty = List.nth s @@ (List.length s - 1) in
-       ret_ty
-     | _ -> assert false)
-;;
-
-let rec infer_stmt ~scope:s ~stmt:st =
-  match st with
-  | SExpr expr -> infer_expr ~scope:s ~expr
-  | SVar var -> infer_var s var
-  | SBlock block -> infer_block s block
-  | SFunc func -> infer_func s func
-
-and infer_var s = function
-  | name, _, expr ->
-    let ty = infer_expr ~scope:s ~expr in
-    s |> Stable.add @@ TyVar { n = name; t = ty };
-    ty
-
-and infer_func s = function
-  | name, _, params, stmt ->
-    let fn_scope = Stable.init @@ KLocal s in
-    let ty = infer_stmt ~scope:fn_scope ~stmt in
-    let params =
-      List.map
-        (fun (name, t) ->
-          match t with
-          | Some t -> ident_ty fn_scope t None
-          | None -> Generic name)
-        params
-    in
-    Stable.append fn_scope s;
-    let ft = Tsymbol.Scheme (params @ [ ty ]) in
-    s |> Stable.add @@ Tsymbol.TyCallable { n = name; t = ft };
-    ft
-
-(**TODO: Implement Type inference for return ...*)
-and infer_block s block =
-  last_ty @@ List.map (fun stmt -> infer_stmt ~scope:s ~stmt) block
-;;
-
-let rec substitution scope =
-  match scope with
-  | Stable.TGlobal g ->
-    Stack.iter (fun v -> substitute scope v) g.data;
-    ()
-  | TLocal g ->
-    Stack.iter (fun v -> substitute scope v) g.data;
-    ()
-
-and replace scope ty with_ty =
-  match scope with
-  | Stable.TGlobal g ->
-    Stack.iter
-      (fun s -> if Tsymbol.get_ty s = ty then Tsymbol.change_type with_ty s)
-      g.data
-  | TLocal g ->
-    Stack.iter
-      (fun s -> if Tsymbol.get_ty s = ty then Tsymbol.change_type with_ty s)
-      g.data;
-    assert false
-
-and substitute scope symbol =
-  match symbol with
-  | Tsymbol.TyApply { n; t = Scheme apply } ->
-    let callable = scope |> Stable.find n @@ Some `TyCallable in
-    (match callable with
-     | Some (TyCallable { n = _; t = Scheme s }) ->
-       List.iteri
-         (fun i t ->
-           if List.length apply > i
-           then (
-             let replace_with = List.nth apply i in
-             replace scope t replace_with))
-         s
-     | _ -> ())
-  | TyCallable _ -> ()
-  | TyVar _ -> ()
-  | _ -> assert false
-;;
-
-let infer_symbols env ast =
-  match ast with
-  | Program (stmts, _) ->
-    List.iter
-      (fun stmt ->
-        let _ = infer_stmt ~scope:env.gsymb ~stmt in
-        ())
-      stmts;
-    substitution env.gsymb;
-    env.gsymb
+let infer ~ast:t =
+  let env = Ttree.new_tree () in
+  let rec infer' ~env = function
+    | stmt :: stmts ->
+      let env = append_rule ~env ~rule:(infer_stmt ~env stmt) in
+      infer' ~env stmts
+    | [] -> env
+  in
+  match t with
+  | Ast.Program (p, _) -> infer' ~env p
 ;;

@@ -4,35 +4,41 @@ let parse src =
   Parser.main lex lexer
 ;;
 
-let%expect_test "Test simple variables" =
+let%expect_test "Infer Let" =
+  (*try*)
   let ast =
     parse
       {|
-      let add(a, b) = {
-        let c = a
-        c
-      }
-    let v = 10
-    let b = 20
-    let c = v + "hello there!"
-    let d = add(20, 10)
-  |}
+    let a = 1
+    let b = 2
+    let add = a + b
+    let square(x) = x * 1
+    |}
   in
-  let a = ast |> Typer.infer_symbols @@ Typer.init () in
-  Stable.print_table a;
+  let infered = Typer.infer ~ast in
+  print_string @@ Ttree.show_ttree infered;
   [%expect
     {|
-    Global:
-       Tsymbol.TyVar {n = "d"; t = Tsymbol.Int}
-       Tsymbol.TyApply {n = "add"; t = (Tsymbol.Scheme [Tsymbol.Int; Tsymbol.Int])}
-       Tsymbol.TyVar {n = "c"; t = Tsymbol.String}
-       Tsymbol.TyVar {n = "b"; t = Tsymbol.Int}
-       Tsymbol.TyVar {n = "v"; t = Tsymbol.Int}
-       Tsymbol.TyCallable {n = "add";
-      t =
-      (Tsymbol.Scheme
-         [(Tsymbol.Generic "a"); (Tsymbol.Generic "b"); (Tsymbol.Generic "a")])}
-    Local:
-       Tsymbol.TyVar {n = "c"; t = (Tsymbol.Generic "a")}
+    { Ttree.r =
+      [Ttree.Variable {n = "string"; t = Ttree.String};
+        Ttree.Variable {n = "float"; t = Ttree.Float};
+        Ttree.Variable {n = "int"; t = Ttree.Int};
+        Ttree.Let {n = "a"; t = Ttree.Variable {n = "int"; t = Ttree.Int}};
+        Ttree.Let {n = "b"; t = Ttree.Variable {n = "int"; t = Ttree.Int}};
+        Ttree.Let {n = "add";
+          t = Ttree.Let {n = "a"; t = Ttree.Variable {n = "int"; t = Ttree.Int}}};
+        Ttree.Abstraction {n = "square";
+          t = Ttree.Variable {n = "x"; t = Ttree.Int};
+          b =
+          (Some { Ttree.r =
+                  [Ttree.Variable {n = "string"; t = Ttree.String};
+                    Ttree.Variable {n = "float"; t = Ttree.Float};
+                    Ttree.Variable {n = "int"; t = Ttree.Int};
+                    Ttree.Variable {n = "x"; t = Ttree.Int}]
+                  })}
+        ]
+      }
     |}]
 ;;
+(*with*)
+(*| Tyerr.TyError t -> print_string @@ Tyerr.show_tyerror t*)
