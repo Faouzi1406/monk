@@ -12,6 +12,7 @@ and rules =
       }
   | Abstraction of
       { n : string
+      ; p : rules list
       ; t : rules
       ; b : ttree option
       }

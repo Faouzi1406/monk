@@ -1,3 +1,7 @@
+(*TODO:
+  replace: if ty_of .. not .. -> check_ty_eq
+*)
+
 open Ttree
 
 let todo () = raise (Invalid_argument "Not yet implemented")
@@ -29,8 +33,25 @@ and bop ~env:e = function
     else lhs
 
 and application ~env:e = function
-  | n, args ->
-    Application { n; t = List.map (fun expr -> infer_expr ~env:e ~expr) args }
+  | name, args ->
+    let v = type_var ~env:e ~name |> Option.get in
+    (match v with
+     | Abstraction { p; _ } ->
+       List.iteri
+         (fun index ty ->
+           let expr = List.nth args index in
+           let expr_ty = infer_expr ~env:e ~expr in
+           replace_poly ~env:e ~ty ~new_ty:expr_ty;
+           if ty_of ~env:e expr_ty != ty_of ~env:e ty
+           then
+             Tyerr.unequal_ty
+               ~lhs:(rule_name ~env:e ty)
+               ~rhs:(rule_name ~env:e expr_ty))
+         p;
+       Application { n = name; t = p }
+     | _ ->
+       assert false
+       (*TODO: [ERROR] the user is calling something that isn't a function*))
 ;;
 
 let rec infer_stmt ~env:e = function
@@ -58,23 +79,25 @@ and infer_let ~env:e = function
 and infer_func ~env:_ = function
   | n, _, params, stmt ->
     let b = new_tree () in
-    let b = add_params ~env:b ~params in
+    let p, b = add_params ~env:b ~params in
     let t = infer_stmt ~env:b stmt in
-    Abstraction { n; t; b = Some b }
+    Abstraction { n; t; p; b = Some b }
 
 and add_params ~env:e ~params:p =
-  let rec add_params' ~env:e = function
-    | (name, None) :: params ->
-      let poly = Variable { n = name; t = Polymorphic } in
-      add_params' ~env:(append_rule ~env:e ~rule:poly) params
-    | (name, Some ty_name) :: params ->
+  let rec add_params' p e = function
+    | (n, None) :: params ->
+      let poly = Variable { n; t = Polymorphic } in
+      let env = append_rule ~env:e ~rule:poly in
+      add_params' (p @ [ poly ]) env params
+    | (n, Some ty_name) :: params ->
       let ty = Ttree.type_var ~env:e ~name:ty_name in
       if ty = None then Tyerr.invalid_ty ~name:ty_name;
-      let ty = Variable { n = name; t = ty_of ~env:e @@ Option.get ty } in
-      add_params' ~env:(append_rule ~env:e ~rule:ty) params
-    | [] -> e
+      let ty = Variable { n; t = ty_of ~env:e @@ Option.get ty } in
+      let env = append_rule ~env:e ~rule:ty in
+      add_params' (p @ [ ty ]) env params
+    | [] -> p, e
   in
-  add_params' ~env:e p
+  add_params' [] e p
 ;;
 
 let infer ~ast:t =
