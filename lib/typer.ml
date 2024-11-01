@@ -18,7 +18,12 @@ and lit ~env:e = function
   | LFloat _ -> Option.get @@ type_var ~env:e ~name:"float"
   | LString _ -> Option.get @@ type_var ~env:e ~name:"string"
   | LIdent id -> Option.get @@ type_var ~env:e ~name:id
-  | _ -> todo ()
+  | LObject obj ->
+    let obj =
+      List.map (fun (name, expr) -> name, infer_expr ~env:e ~expr) obj
+    in
+    Type { t = Object obj }
+  | _ -> assert false
 
 and bop ~env:e = function
   | _, Ast.ODot, _ -> todo ()
@@ -58,7 +63,13 @@ let rec infer_stmt ~env:e = function
   | Ast.SVar v -> infer_let ~env:e v
   | SFunc f -> infer_func ~env:e f
   | SExpr expr -> infer_expr ~env:e ~expr
+  | SType decl_ty -> add_decl_ty ~env:e decl_ty (*Man I really don't know...*)
   | _ -> todo ()
+
+and add_decl_ty ~env:e = function
+  | n, expr ->
+    let t = infer_expr ~env:e ~expr in
+    Variable { n; t = ty_of ~env:e t }
 
 and infer_let ~env:e = function
   | n, Some ty_name, expr ->
