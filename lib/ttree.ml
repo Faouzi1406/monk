@@ -28,6 +28,7 @@ and types =
   | Float
   | Int
   | Ident
+  | Object of (string * rules) list
 [@@deriving show]
 
 let append_rule ~env:e ~rule:r = { r = e.r @ [ r ] }
@@ -71,6 +72,7 @@ let ty_name = function
   | Float -> "float"
   | Int -> "int"
   | Ident -> "type"
+  | Object _ -> "object"
 ;;
 
 let rec rule_name ~env:e = function
