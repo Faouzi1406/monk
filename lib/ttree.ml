@@ -102,3 +102,7 @@ let replace_poly ~env:e ~ty:t ~new_ty:rt =
   | Polymorphic -> change_ty ~env:e ~new_ty:rt t
   | _ -> ()
 ;;
+
+let rec find_sig_match ~env:e ~ty:t =
+  List.find_opt (fun v -> ty_of ~env:e v = t) e.r
+;;

@@ -22,7 +22,9 @@ and lit ~env:e = function
     let obj =
       List.map (fun (name, expr) -> name, infer_expr ~env:e ~expr) obj
     in
-    Type { t = Object obj }
+    (match find_sig_match ~env:e ~ty:(Object obj) with
+     | Some v -> v
+     | None -> Type { t = Object obj })
   | _ -> assert false
 
 and bop ~env:e = function

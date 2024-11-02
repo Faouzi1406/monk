@@ -78,7 +78,7 @@ let%expect_test "Infer Let" =
                ("y", Ttree.Variable {n = "int"; t = Ttree.Int})])};
         Ttree.Let {n = "v";
           t =
-          Ttree.Type {
+          Ttree.Variable {n = "square";
             t =
             (Ttree.Object
                [("x", Ttree.Variable {n = "int"; t = Ttree.Int});
