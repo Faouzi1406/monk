@@ -4,20 +4,14 @@ let parse src =
   Parser.main lex lexer
 ;;
 
-let%expect_test "Infer Let" =
+let%expect_test "Basic inference" =
   let ast =
     parse
       {|
     let a = 1
-    let b = 2
-    let add = a + b
-    let square(x) = x * 1
-    let squares(c, d) = c * c + d * d 
-    let wow = squares(10, 10)
-    let identity(x) = x
-
-    type square { x: int; y:int  }
-    let v = {x: 20; y: 10}
+    let b = "Yo"
+    let c = "yo" + b
+    let abc =  1.2
     |}
   in
   let infered = Typer.infer ~ast in
@@ -29,48 +23,30 @@ let%expect_test "Infer Let" =
         Ttree.Variable {n = "float"; t = Ttree.Float};
         Ttree.Variable {n = "int"; t = Ttree.Int};
         Ttree.Let {n = "a"; t = Ttree.Variable {n = "int"; t = Ttree.Int}};
-        Ttree.Let {n = "b"; t = Ttree.Variable {n = "int"; t = Ttree.Int}};
-        Ttree.Let {n = "add";
-          t = Ttree.Let {n = "a"; t = Ttree.Variable {n = "int"; t = Ttree.Int}}};
-        Ttree.Abstraction {n = "square";
-          p = [Ttree.Variable {n = "x"; t = Ttree.Int}];
-          t = Ttree.Variable {n = "x"; t = Ttree.Int};
-          b =
-          (Some { Ttree.r =
-                  [Ttree.Variable {n = "string"; t = Ttree.String};
-                    Ttree.Variable {n = "float"; t = Ttree.Float};
-                    Ttree.Variable {n = "int"; t = Ttree.Int};
-                    Ttree.Variable {n = "x"; t = Ttree.Int}]
-                  })};
-        Ttree.Abstraction {n = "squares";
-          p =
-          [Ttree.Variable {n = "c"; t = Ttree.Int};
-            Ttree.Variable {n = "d"; t = Ttree.Int}];
-          t = Ttree.Variable {n = "c"; t = Ttree.Int};
-          b =
-          (Some { Ttree.r =
-                  [Ttree.Variable {n = "string"; t = Ttree.String};
-                    Ttree.Variable {n = "float"; t = Ttree.Float};
-                    Ttree.Variable {n = "int"; t = Ttree.Int};
-                    Ttree.Variable {n = "c"; t = Ttree.Int};
-                    Ttree.Variable {n = "d"; t = Ttree.Int}]
-                  })};
-        Ttree.Let {n = "wow";
-          t =
-          Ttree.Application {n = "squares";
-            t =
-            [Ttree.Variable {n = "c"; t = Ttree.Int};
-              Ttree.Variable {n = "d"; t = Ttree.Int}]}};
-        Ttree.Abstraction {n = "identity";
-          p = [Ttree.Variable {n = "x"; t = Ttree.Polymorphic}];
-          t = Ttree.Variable {n = "x"; t = Ttree.Polymorphic};
-          b =
-          (Some { Ttree.r =
-                  [Ttree.Variable {n = "string"; t = Ttree.String};
-                    Ttree.Variable {n = "float"; t = Ttree.Float};
-                    Ttree.Variable {n = "int"; t = Ttree.Int};
-                    Ttree.Variable {n = "x"; t = Ttree.Polymorphic}]
-                  })};
+        Ttree.Let {n = "b"; t = Ttree.Variable {n = "string"; t = Ttree.String}};
+        Ttree.Let {n = "c"; t = Ttree.Variable {n = "string"; t = Ttree.String}};
+        Ttree.Let {n = "abc"; t = Ttree.Variable {n = "float"; t = Ttree.Float}}];
+      prev = None }
+    |}]
+;;
+
+let%expect_test "functions, params, types" =
+  let ast =
+    parse
+      {|
+    type square { x: int; y:int  }
+    let v = {x: 20; y: 10}
+    let hello_world(x) = {x: x; y: 10}
+    |}
+  in
+  let infered = Typer.infer ~ast in
+  print_string @@ Ttree.show_ttree infered;
+  [%expect
+    {|
+    { Ttree.r =
+      [Ttree.Variable {n = "string"; t = Ttree.String};
+        Ttree.Variable {n = "float"; t = Ttree.Float};
+        Ttree.Variable {n = "int"; t = Ttree.Int};
         Ttree.Variable {n = "square";
           t =
           (Ttree.Object
@@ -82,8 +58,43 @@ let%expect_test "Infer Let" =
             t =
             (Ttree.Object
                [("x", Ttree.Variable {n = "int"; t = Ttree.Int});
-                 ("y", Ttree.Variable {n = "int"; t = Ttree.Int})])}}
-        ]
-      }
+                 ("y", Ttree.Variable {n = "int"; t = Ttree.Int})])}};
+        Ttree.Abstraction {n = "hello_world";
+          p = [Ttree.Variable {n = "x"; t = Ttree.Int}];
+          t =
+          Ttree.Variable {n = "square";
+            t =
+            (Ttree.Object
+               [("x", Ttree.Variable {n = "int"; t = Ttree.Int});
+                 ("y", Ttree.Variable {n = "int"; t = Ttree.Int})])};
+          b =
+          (Some { Ttree.r = [Ttree.Variable {n = "x"; t = Ttree.Int}];
+                  prev =
+                  (Some { Ttree.r =
+                          [Ttree.Variable {n = "string"; t = Ttree.String};
+                            Ttree.Variable {n = "float"; t = Ttree.Float};
+                            Ttree.Variable {n = "int"; t = Ttree.Int};
+                            Ttree.Variable {n = "square";
+                              t =
+                              (Ttree.Object
+                                 [("x", Ttree.Variable {n = "int"; t = Ttree.Int});
+                                   ("y",
+                                    Ttree.Variable {n = "int"; t = Ttree.Int})
+                                   ])};
+                            Ttree.Let {n = "v";
+                              t =
+                              Ttree.Variable {n = "square";
+                                t =
+                                (Ttree.Object
+                                   [("x",
+                                     Ttree.Variable {n = "int"; t = Ttree.Int});
+                                     ("y",
+                                      Ttree.Variable {n = "int"; t = Ttree.Int})
+                                     ])}}
+                            ];
+                          prev = None })
+                  })}
+        ];
+      prev = None }
     |}]
 ;;

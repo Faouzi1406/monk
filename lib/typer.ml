@@ -23,6 +23,14 @@ and lit ~env:e = function
       List.map (fun (name, expr) -> name, infer_expr ~env:e ~expr) obj
     in
     (match find_sig_match ~env:e ~ty:(Object obj) with
+     | Some (Variable { n; t = Object obj_infr }) ->
+       List.iter2
+         (fun (_, lhs) (_, rhs) ->
+           replace_poly ~env:e ~new_ty:lhs ~ty:rhs;
+           replace_poly ~env:e ~new_ty:rhs ~ty:lhs)
+         obj
+         obj_infr;
+       Variable { n; t = Object obj_infr }
      | Some v -> v
      | None -> Type { t = Object obj })
   | _ -> assert false
@@ -89,9 +97,9 @@ and infer_let ~env:e = function
   | n, None, expr -> Let { n; t = infer_expr ~env:e ~expr }
 
 (*TODO: We have to load in the global enviremont, otherwise inference will get pretty dang hard...*)
-and infer_func ~env:_ = function
+and infer_func ~env:e = function
   | n, _, params, stmt ->
-    let b = new_tree () in
+    let b = new_tree @@ Some e in
     let p, b = add_params ~env:b ~params in
     let t = infer_stmt ~env:b stmt in
     Abstraction { n; t; p; b = Some b }
@@ -114,7 +122,7 @@ and add_params ~env:e ~params:p =
 ;;
 
 let infer ~ast:t =
-  let env = Ttree.new_tree () in
+  let env = new_tree_default () in
   let rec infer' ~env = function
     | stmt :: stmts ->
       let env = append_rule ~env ~rule:(infer_stmt ~env stmt) in

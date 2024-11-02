@@ -1,4 +1,7 @@
-type ttree = { r : rules list }
+type ttree =
+  { r : rules list
+  ; prev : ttree option
+  }
 
 and rules =
   | Type of { mutable t : types }
@@ -31,16 +34,19 @@ and types =
   | Object of (string * rules) list
 [@@deriving show]
 
-let append_rule ~env:e ~rule:r = { r = e.r @ [ r ] }
+let append_rule ~env:e ~rule:r = { r = e.r @ [ r ]; prev = e.prev }
 
-let new_tree () =
+let new_tree_default () =
   { r =
       [ Variable { n = "string"; t = String }
       ; Variable { n = "float"; t = Float }
       ; Variable { n = "int"; t = Int }
       ]
+  ; prev = None
   }
 ;;
+
+let new_tree prev = { r = []; prev }
 
 let rule_is_named ~rule:r ~name:n =
   match r with
@@ -51,8 +57,13 @@ let rule_is_named ~rule:r ~name:n =
   | Let r -> r.n = n
 ;;
 
-let type_var ~env:e ~name:n =
-  Util.List.filter_first (fun v -> rule_is_named ~rule:v ~name:n) e.r
+let rec type_var ~env:e ~name:n =
+  match
+    Util.List.filter_first (fun v -> rule_is_named ~rule:v ~name:n) e.r, e.prev
+  with
+  | Some v, _ -> Some v
+  | None, Some e -> type_var ~env:e ~name:n
+  | None, _ -> None
 ;;
 
 let rec ty_of ~env:e = function
@@ -103,6 +114,25 @@ let replace_poly ~env:e ~ty:t ~new_ty:rt =
   | _ -> ()
 ;;
 
+exception NoMatch
+
 let rec find_sig_match ~env:e ~ty:t =
-  List.find_opt (fun v -> ty_of ~env:e v = t) e.r
+  match List.find_opt (fun v -> sig_match (t, ty_of ~env:e v)) e.r, e.prev with
+  | Some v, _ -> Some v
+  | None, Some e -> find_sig_match ~env:e ~ty:t
+  | _ -> None
+
+and sig_match = function
+  | Object lhs, Object rhs ->
+    (try
+       List.iter2
+         (fun (left, _) (right, _) -> if left <> right then raise NoMatch)
+         lhs
+         rhs;
+       List.length lhs = List.length rhs
+     with
+     | NoMatch -> false)
+  | Int, Int -> true
+  | String, String -> true
+  | _ -> false
 ;;
