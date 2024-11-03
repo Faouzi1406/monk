@@ -6,4 +6,10 @@ module List = struct
     with
     | Failure _ -> None
   ;;
+
+  let rec last = function
+    | last :: [] -> Some last
+    | [] -> None
+    | _ :: rest -> last rest
+  ;;
 end

@@ -75,11 +75,21 @@ and application ~env:e = function
 ;;
 
 let rec infer_stmt ~env:e = function
-  | Ast.SVar v -> infer_let ~env:e v
-  | SFunc f -> infer_func ~env:e f
-  | SExpr expr -> infer_expr ~env:e ~expr
-  | SType decl_ty -> add_decl_ty ~env:e decl_ty (*Man I really don't know...*)
+  | Ast.SVar v -> append_rule ~env:e ~rule:(infer_let ~env:e v)
+  | SFunc f -> append_rule ~env:e ~rule:(infer_func ~env:e f)
+  | SExpr expr -> append_rule ~env:e ~rule:(infer_expr ~env:e ~expr)
+  | SType decl_ty -> append_rule ~env:e ~rule:(add_decl_ty ~env:e decl_ty)
+  | SBlock block -> infer_block ~env:e block
   | _ -> todo ()
+
+and infer_block ~env:e = function
+  | stmt :: [] ->
+    let env = infer_stmt ~env:e stmt in
+    env
+  | stmt :: stmts ->
+    let env = infer_stmt ~env:e stmt in
+    infer_block ~env stmts
+  | [] -> append_rule ~env:e ~rule:(Type { t = Void })
 
 and add_decl_ty ~env:e = function
   | n, expr ->
@@ -106,8 +116,8 @@ and infer_func ~env:e = function
   | n, _, params, stmt ->
     let b = new_tree @@ Some e in
     let p, b = add_params ~env:b ~params in
-    let t = infer_stmt ~env:b stmt in
-    Abstraction { n; t; p; b = Some b }
+    let env = infer_stmt ~env:b stmt in
+    Abstraction { n; t = Option.get @@ tail_rule ~env; p; b = Some env }
 
 and add_params ~env:e ~params:p =
   let rec add_params' p e = function
@@ -130,7 +140,7 @@ let infer ~ast:t =
   let env = new_tree_default () in
   let rec infer' ~env = function
     | stmt :: stmts ->
-      let env = append_rule ~env ~rule:(infer_stmt ~env stmt) in
+      let env = infer_stmt ~env stmt in
       infer' ~env stmts
     | [] -> env
   in

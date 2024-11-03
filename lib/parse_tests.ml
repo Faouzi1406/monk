@@ -38,7 +38,7 @@ let%expect_test "Parsing type" =
       type v { fname: string; lname: string }
 
       implement v {
-         let name(self: v): string =  { return self.fname }
+         let name(self: v): string =  { self.fname }
       }
     |}
   in
@@ -57,11 +57,10 @@ let%expect_test "Parsing type" =
              [(Ast.SFunc
                  ("name", (Some "string"), [("self", (Some "v"))],
                   (Ast.SBlock
-                     [(Ast.SReturn
-                         (Ast.SExpr
-                            (Ast.EBinaryOp
-                               ((Ast.ELiteral (Ast.LIdent "self")), Ast.ODot,
-                                (Ast.ELiteral (Ast.LIdent "fname"))))))
+                     [(Ast.SExpr
+                         (Ast.EBinaryOp
+                            ((Ast.ELiteral (Ast.LIdent "self")), Ast.ODot,
+                             (Ast.ELiteral (Ast.LIdent "fname")))))
                        ])))
                ]))
          ],

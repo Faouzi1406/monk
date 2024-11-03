@@ -36,7 +36,7 @@ let%expect_test "functions, params, types" =
       {|
     type square { x: int; y:int  }
     let v = {x: 20; y: 10}
-    let hello_world(x) = {x: x; y: 10}
+    let hello_world(x) = 10
     |}
   in
   let infered = Typer.infer ~ast in
@@ -60,15 +60,12 @@ let%expect_test "functions, params, types" =
                [("x", Ttree.Variable {n = "int"; t = Ttree.Int});
                  ("y", Ttree.Variable {n = "int"; t = Ttree.Int})])}};
         Ttree.Abstraction {n = "hello_world";
-          p = [Ttree.Variable {n = "x"; t = Ttree.Int}];
-          t =
-          Ttree.Variable {n = "square";
-            t =
-            (Ttree.Object
-               [("x", Ttree.Variable {n = "int"; t = Ttree.Int});
-                 ("y", Ttree.Variable {n = "int"; t = Ttree.Int})])};
+          p = [Ttree.Variable {n = "x"; t = Ttree.Polymorphic}];
+          t = Ttree.Variable {n = "int"; t = Ttree.Int};
           b =
-          (Some { Ttree.r = [Ttree.Variable {n = "x"; t = Ttree.Int}];
+          (Some { Ttree.r =
+                  [Ttree.Variable {n = "x"; t = Ttree.Polymorphic};
+                    Ttree.Variable {n = "int"; t = Ttree.Int}];
                   prev =
                   (Some { Ttree.r =
                           [Ttree.Variable {n = "string"; t = Ttree.String};
@@ -92,6 +89,45 @@ let%expect_test "functions, params, types" =
                                       Ttree.Variable {n = "int"; t = Ttree.Int})
                                      ])}}
                             ];
+                          prev = None })
+                  })}
+        ];
+      prev = None }
+    |}]
+;;
+
+let%expect_test "Function block body" =
+  let ast =
+    parse
+      {|
+      let add_20(a) = {
+         let c = 20
+         a + c
+      }
+    |}
+  in
+  let infered = Typer.infer ~ast in
+  print_string @@ Ttree.show_ttree infered;
+  [%expect
+    {|
+    { Ttree.r =
+      [Ttree.Variable {n = "string"; t = Ttree.String};
+        Ttree.Variable {n = "float"; t = Ttree.Float};
+        Ttree.Variable {n = "int"; t = Ttree.Int};
+        Ttree.Abstraction {n = "add_20";
+          p = [Ttree.Variable {n = "a"; t = Ttree.Int}];
+          t = Ttree.Variable {n = "a"; t = Ttree.Int};
+          b =
+          (Some { Ttree.r =
+                  [Ttree.Variable {n = "a"; t = Ttree.Int};
+                    Ttree.Let {n = "c";
+                      t = Ttree.Variable {n = "int"; t = Ttree.Int}};
+                    Ttree.Variable {n = "a"; t = Ttree.Int}];
+                  prev =
+                  (Some { Ttree.r =
+                          [Ttree.Variable {n = "string"; t = Ttree.String};
+                            Ttree.Variable {n = "float"; t = Ttree.Float};
+                            Ttree.Variable {n = "int"; t = Ttree.Int}];
                           prev = None })
                   })}
         ];

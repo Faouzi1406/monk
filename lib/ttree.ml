@@ -32,6 +32,7 @@ and types =
   | Int
   | Ident
   | Object of (string * rules) list
+  | Void
 [@@deriving show]
 
 let append_rule ~env:e ~rule:r = { r = e.r @ [ r ]; prev = e.prev }
@@ -136,3 +137,5 @@ and sig_match = function
   | String, String -> true
   | _ -> false
 ;;
+
+let tail_rule ~env:e = Util.List.last e.r

@@ -58,12 +58,10 @@ stmt:
         | i = implement; { SImplement(i) }
         | f = func; { f }
         | e = expr { SExpr e }
+        | b = block; { SBlock b }
         | c = controll_flow; { SControllFlow(c) }
-        | b = block; { SBlock(b) }
-        | r = ret; { r }
 
 
-ret: RETURN; s = stmt; {SReturn s}
 expr:
     | c = call; { c } 
     | b = b_op; { b }
