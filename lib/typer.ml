@@ -27,7 +27,12 @@ and lit ~env:e = function
        List.iter2
          (fun (_, lhs) (_, rhs) ->
            replace_poly ~env:e ~new_ty:lhs ~ty:rhs;
-           replace_poly ~env:e ~new_ty:rhs ~ty:lhs)
+           replace_poly ~env:e ~new_ty:rhs ~ty:lhs;
+           if ty_of ~env:e lhs <> ty_of ~env:e rhs
+           then
+             Tyerr.unequal_ty
+               ~lhs:(rule_name ~env:e lhs)
+               ~rhs:(rule_name ~env:e rhs))
          obj
          obj_infr;
        Variable { n; t = Object obj_infr }
