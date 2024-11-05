@@ -80,7 +80,32 @@ let rec infer_stmt ~env:e = function
   | SExpr expr -> append_rule ~env:e ~rule:(infer_expr ~env:e ~expr)
   | SType decl_ty -> append_rule ~env:e ~rule:(add_decl_ty ~env:e decl_ty)
   | SBlock block -> infer_block ~env:e block
+  | SControllFlow flow -> infer_flow ~env:e flow
   | _ -> todo ()
+
+and infer_flow ~env:e = function
+  | CIf (_, body, elif, _) ->
+    let e = infer_stmt ~env:e body in
+    let stmts = List.map (fun (_, body) -> body) elif in
+    unify_stmts e stmts
+  | _ -> todo ()
+
+and unify_stmts env = function
+  | stmt :: stmts ->
+    let new_env = infer_stmt ~env stmt in
+    let ty_lhs = Option.get @@ tail_rule ~env in
+    let ty_rhs = Option.get @@ tail_rule ~env:new_env in
+    print_string
+    @@ "lhs = "
+    ^ (show_types @@ ty_of ~env ty_lhs)
+    ^ " rhs = "
+    ^ show_types
+    @@ ty_of ~env:new_env ty_rhs;
+    if ty_of ~env ty_lhs <> ty_of ~env:new_env ty_rhs
+    then
+      Tyerr.unequal_ty ~lhs:(rule_name ~env ty_lhs) ~rhs:(rule_name ~env ty_rhs)
+    else unify_stmts new_env stmts
+  | [] -> env
 
 and infer_block ~env:e = function
   | stmt :: [] ->

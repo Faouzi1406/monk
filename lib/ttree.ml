@@ -85,6 +85,7 @@ let ty_name = function
   | Int -> "int"
   | Ident -> "type"
   | Object _ -> "object"
+  | Void -> "void"
 ;;
 
 let rec rule_name ~env:e = function
