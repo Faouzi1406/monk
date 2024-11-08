@@ -22,6 +22,7 @@ let%expect_test "Basic inference" =
       [Ttree.Variable {n = "string"; t = Ttree.String};
         Ttree.Variable {n = "float"; t = Ttree.Float};
         Ttree.Variable {n = "int"; t = Ttree.Int};
+        Ttree.Variable {n = "bool"; t = Ttree.Bool};
         Ttree.Let {n = "a"; t = Ttree.Variable {n = "int"; t = Ttree.Int}};
         Ttree.Let {n = "b"; t = Ttree.Variable {n = "string"; t = Ttree.String}};
         Ttree.Let {n = "c"; t = Ttree.Variable {n = "string"; t = Ttree.String}};
@@ -47,6 +48,7 @@ let%expect_test "functions, params, types" =
       [Ttree.Variable {n = "string"; t = Ttree.String};
         Ttree.Variable {n = "float"; t = Ttree.Float};
         Ttree.Variable {n = "int"; t = Ttree.Int};
+        Ttree.Variable {n = "bool"; t = Ttree.Bool};
         Ttree.Variable {n = "square";
           t =
           (Ttree.Object
@@ -71,6 +73,7 @@ let%expect_test "functions, params, types" =
                           [Ttree.Variable {n = "string"; t = Ttree.String};
                             Ttree.Variable {n = "float"; t = Ttree.Float};
                             Ttree.Variable {n = "int"; t = Ttree.Int};
+                            Ttree.Variable {n = "bool"; t = Ttree.Bool};
                             Ttree.Variable {n = "square";
                               t =
                               (Ttree.Object
@@ -110,6 +113,7 @@ let%expect_test "Function block body" =
       [Ttree.Variable {n = "string"; t = Ttree.String};
         Ttree.Variable {n = "float"; t = Ttree.Float};
         Ttree.Variable {n = "int"; t = Ttree.Int};
+        Ttree.Variable {n = "bool"; t = Ttree.Bool};
         Ttree.Abstraction {n = "add_20";
           p = [Ttree.Variable {n = "a"; t = Ttree.Int}];
           t = Ttree.Variable {n = "a"; t = Ttree.Int};
@@ -121,7 +125,8 @@ let%expect_test "Function block body" =
                   (Some { Ttree.r =
                           [Ttree.Variable {n = "string"; t = Ttree.String};
                             Ttree.Variable {n = "float"; t = Ttree.Float};
-                            Ttree.Variable {n = "int"; t = Ttree.Int}];
+                            Ttree.Variable {n = "int"; t = Ttree.Int};
+                            Ttree.Variable {n = "bool"; t = Ttree.Bool}];
                           prev = None })
                   })}
         ];
@@ -145,10 +150,11 @@ let%expect_test "Function if_else controll flow" =
   print_string @@ Ttree.show_ttree infered;
   [%expect
     {|
-    lhs = Ttree.String rhs = Ttree.String{ Ttree.r =
+    { Ttree.r =
       [Ttree.Variable {n = "string"; t = Ttree.String};
         Ttree.Variable {n = "float"; t = Ttree.Float};
         Ttree.Variable {n = "int"; t = Ttree.Int};
+        Ttree.Variable {n = "bool"; t = Ttree.Bool};
         Ttree.Abstraction {n = "foo_or_bar";
           p = [Ttree.Variable {n = "a"; t = Ttree.Polymorphic}];
           t = Ttree.Variable {n = "string"; t = Ttree.String};
@@ -161,9 +167,76 @@ let%expect_test "Function if_else controll flow" =
                   (Some { Ttree.r =
                           [Ttree.Variable {n = "string"; t = Ttree.String};
                             Ttree.Variable {n = "float"; t = Ttree.Float};
-                            Ttree.Variable {n = "int"; t = Ttree.Int}];
+                            Ttree.Variable {n = "int"; t = Ttree.Int};
+                            Ttree.Variable {n = "bool"; t = Ttree.Bool}];
                           prev = None })
                   })}
+        ];
+      prev = None }
+    |}]
+;;
+
+let%expect_test "Match function" =
+  let ast =
+    parse
+      {|
+      let fizz_buzz(x) = match x
+      | 0 => "0"
+      | 1 => "1"
+      | x => "x is a number"
+
+      let cool = "cool" +  fizz_buzz(10)
+    |}
+  in
+  let infered = Typer.infer ~ast in
+  print_string @@ Ttree.show_ttree infered;
+  [%expect
+    {|
+    Ttree.Variable {n = "string"; t = Ttree.String}
+    Ttree.Variable {n = "float"; t = Ttree.Float}
+    Ttree.Variable {n = "int"; t = Ttree.Int}
+    Ttree.Variable {n = "bool"; t = Ttree.Bool}
+    Ttree.Abstraction {n = "fizz_buzz";
+      p = [Ttree.Variable {n = "x"; t = Ttree.Int}];
+      t = Ttree.Variable {n = "string"; t = Ttree.String};
+      b =
+      (Some { Ttree.r =
+              [Ttree.Variable {n = "x"; t = Ttree.Int};
+                Ttree.Variable {n = "string"; t = Ttree.String};
+                Ttree.Variable {n = "string"; t = Ttree.String};
+                Ttree.Variable {n = "string"; t = Ttree.String}];
+              prev =
+              (Some { Ttree.r =
+                      [Ttree.Variable {n = "string"; t = Ttree.String};
+                        Ttree.Variable {n = "float"; t = Ttree.Float};
+                        Ttree.Variable {n = "int"; t = Ttree.Int};
+                        Ttree.Variable {n = "bool"; t = Ttree.Bool}];
+                      prev = None })
+              })}
+    { Ttree.r =
+      [Ttree.Variable {n = "string"; t = Ttree.String};
+        Ttree.Variable {n = "float"; t = Ttree.Float};
+        Ttree.Variable {n = "int"; t = Ttree.Int};
+        Ttree.Variable {n = "bool"; t = Ttree.Bool};
+        Ttree.Abstraction {n = "fizz_buzz";
+          p = [Ttree.Variable {n = "x"; t = Ttree.Int}];
+          t = Ttree.Variable {n = "string"; t = Ttree.String};
+          b =
+          (Some { Ttree.r =
+                  [Ttree.Variable {n = "x"; t = Ttree.Int};
+                    Ttree.Variable {n = "string"; t = Ttree.String};
+                    Ttree.Variable {n = "string"; t = Ttree.String};
+                    Ttree.Variable {n = "string"; t = Ttree.String}];
+                  prev =
+                  (Some { Ttree.r =
+                          [Ttree.Variable {n = "string"; t = Ttree.String};
+                            Ttree.Variable {n = "float"; t = Ttree.Float};
+                            Ttree.Variable {n = "int"; t = Ttree.Int};
+                            Ttree.Variable {n = "bool"; t = Ttree.Bool}];
+                          prev = None })
+                  })};
+        Ttree.Let {n = "cool";
+          t = Ttree.Variable {n = "string"; t = Ttree.String}}
         ];
       prev = None }
     |}]

@@ -11,7 +11,18 @@ let rec infer_expr ~env:e ~expr:ex =
   | Ast.ECall ex -> application ~env:e ex
   | EBinaryOp b -> bop ~env:e b
   | ELiteral l -> lit ~env:e l
-  | _ -> todo ()
+  | ECondition c -> cond ~env:e c
+
+and cond ~env:e = function
+  | lhs, _, rhs ->
+    let lhs = infer_expr ~env:e ~expr:lhs in
+    let rhs = infer_expr ~env:e ~expr:rhs in
+    replace_poly ~env:e ~new_ty:lhs ~ty:rhs;
+    replace_poly ~env:e ~new_ty:rhs ~ty:lhs;
+    if ty_of ~env:e lhs != ty_of ~env:e rhs
+    then
+      Tyerr.unequal_ty ~lhs:(rule_name ~env:e lhs) ~rhs:(rule_name ~env:e rhs)
+    else Option.get @@ type_var ~env:e ~name:"bool"
 
 and lit ~env:e = function
   | Ast.LInt _ -> Option.get @@ type_var ~env:e ~name:"int"
@@ -54,6 +65,7 @@ and bop ~env:e = function
 
 and application ~env:e = function
   | name, args ->
+    List.iter (fun b -> print_endline @@ show_rules b) e.r;
     let v = type_var ~env:e ~name |> Option.get in
     (match v with
      | Abstraction { p; _ } ->
@@ -84,10 +96,33 @@ let rec infer_stmt ~env:e = function
   | _ -> todo ()
 
 and infer_flow ~env:e = function
-  | CIf (_, body, elif, _) ->
+  | CIf (_, body, elif, None) ->
     let e = infer_stmt ~env:e body in
     let stmts = List.map (fun (_, body) -> body) elif in
     unify_stmts e stmts
+  | CIf (_, body, elif, Some el) ->
+    let e = infer_stmt ~env:e body in
+    let stmts = List.map (fun (_, body) -> body) elif in
+    unify_stmts e @@ stmts @ [ el ]
+  | CMatch (expr, against) ->
+    let cexpr, body = List.hd against in
+    let cexpr_ty = infer_expr ~env:e ~expr:cexpr in
+    let e = infer_stmt ~env:e body in
+    let expr_ty = infer_expr ~env:e ~expr in
+    replace_poly ~env:e ~ty:expr_ty ~new_ty:cexpr_ty;
+    let stmts =
+      List.map (fun (cexpr, body) ->
+        let cexpr_ty = infer_expr ~env:e ~expr:cexpr in
+        if ty_of ~env:e cexpr_ty <> ty_of ~env:e expr_ty
+        then
+          Tyerr.unequal_ty
+            ~lhs:(rule_name ~env:e cexpr_ty)
+            ~rhs:(rule_name ~env:e expr_ty);
+        body)
+      @@ List.tl against
+    in
+    let stmts = unify_stmts e stmts in
+    stmts
   | _ -> todo ()
 
 and unify_stmts env = function
@@ -95,12 +130,6 @@ and unify_stmts env = function
     let new_env = infer_stmt ~env stmt in
     let ty_lhs = Option.get @@ tail_rule ~env in
     let ty_rhs = Option.get @@ tail_rule ~env:new_env in
-    print_string
-    @@ "lhs = "
-    ^ (show_types @@ ty_of ~env ty_lhs)
-    ^ " rhs = "
-    ^ show_types
-    @@ ty_of ~env:new_env ty_rhs;
     if ty_of ~env ty_lhs <> ty_of ~env:new_env ty_rhs
     then
       Tyerr.unequal_ty ~lhs:(rule_name ~env ty_lhs) ~rhs:(rule_name ~env ty_rhs)

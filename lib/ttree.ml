@@ -32,6 +32,7 @@ and types =
   | Int
   | Ident
   | Object of (string * rules) list
+  | Bool
   | Void
 [@@deriving show]
 
@@ -42,6 +43,7 @@ let new_tree_default () =
       [ Variable { n = "string"; t = String }
       ; Variable { n = "float"; t = Float }
       ; Variable { n = "int"; t = Int }
+      ; Variable { n = "bool"; t = Bool }
       ]
   ; prev = None
   }

@@ -67,3 +67,40 @@ let%expect_test "Parsing type" =
        None))
     |}]
 ;;
+
+let%expect_test "Parsing match" =
+  let v =
+    parse
+      {|
+      match "this"
+      | "Hello world!" => { 
+        let b = "10"
+        b
+      }
+      | "this" => {
+        "In truth this is the only case!"
+      }
+    |}
+  in
+  print_string (Ast.show_ast v);
+  [%expect
+    {|
+    (Ast.Program (
+       [(Ast.SControllFlow
+           (Ast.CMatch ((Ast.ELiteral (Ast.LString "this")),
+              [((Ast.ELiteral (Ast.LString "Hello world!")),
+                (Ast.SBlock
+                   [(Ast.SVar ("b", None, (Ast.ELiteral (Ast.LString "10"))));
+                     (Ast.SExpr (Ast.ELiteral (Ast.LIdent "b")))]));
+                ((Ast.ELiteral (Ast.LString "this")),
+                 (Ast.SBlock
+                    [(Ast.SExpr
+                        (Ast.ELiteral
+                           (Ast.LString "In truth this is the only case!")))
+                      ]))
+                ]
+              )))
+         ],
+       None))
+    |}]
+;;
