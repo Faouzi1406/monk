@@ -55,6 +55,7 @@ rule read =
   | "=>" { ARROWRIGHT }
   | ',' {COMMA}
   | ':' { COLON }
+  | '%' { MODULO }
   | '+' { ADD }
   | '-' { MIN }
   | '*' { MUL }

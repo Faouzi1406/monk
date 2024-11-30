@@ -29,7 +29,7 @@ and cond = expression * comp * expression [@@deriving show]
 
 and controll_flow =
   | CIf of if_cf
-  | CMatch of (expression * statement) list
+  | CMatch of expression * (expression * statement) list
   | CWHile of expression * statement
 [@@deriving show]
 
@@ -51,6 +51,7 @@ and typef = ident * expression [@@deriving show]
 and implementf = ident * statement list [@@deriving show]
 
 and op =
+  | OModulo
   | OPlus
   | OMin
   | ODiv

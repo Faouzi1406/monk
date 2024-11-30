@@ -24,6 +24,7 @@
 %token ARROWLEFT
 %token COMMA
 %token COLON
+%token MODULO
 %token ADD
 %token MIN
 %token MUL
@@ -58,12 +59,10 @@ stmt:
         | i = implement; { SImplement(i) }
         | f = func; { f }
         | e = expr { SExpr e }
+        | b = block; { SBlock b }
         | c = controll_flow; { SControllFlow(c) }
-        | b = block; { SBlock(b) }
-        | r = ret; { r }
 
 
-ret: RETURN; s = stmt; {SReturn s}
 expr:
     | c = call; { c } 
     | b = b_op; { b }
@@ -102,10 +101,10 @@ else_do:
         ELSE; s = stmt;  { s }
 
 matching:
-    MATCH; c = separated_list(PIPE, match_case); { CMatch(c) }
+    MATCH; e = expr; c = list(match_case);  { CMatch(e, c) }
 
 match_case: 
-            e = expr; s = stmt; { e, s }
+    PIPE; e = expr; ARROWRIGHT; s = stmt; { e, s }
 
 implement:
         IMPLEMENT; i = IDENT; LEFTCURLYBRACKET; m = list(stmt); RIGHTCURLYBRACKET; {i, m}
@@ -134,6 +133,7 @@ field:
     i = IDENT; COLON; e = expr; { i, e }
 
 %inline op: 
+            | MODULO { OModulo }
             | ADD { OPlus }
             | MIN { OMin }
             | MUL { OMul }
